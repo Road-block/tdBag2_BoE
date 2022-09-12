@@ -1,0 +1,7 @@
+package-as: tdBag2_BoE
+enable-nolib-creation: no
+
+ignore:
+  - .gitignore
+  - .pkgmeta
+  - LICENSE
