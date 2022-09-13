@@ -19,56 +19,61 @@ local Item = _G.Item
 local BIND_TRADE_TIME_REMAINING_CAPTURE = _G.BIND_TRADE_TIME_REMAINING:gsub('%%s', '(.+)')
 local REFUND_TIME_REMAINING_CAPTURE = _G.REFUND_TIME_REMAINING:gsub('%%s', '(.+)')
 local UNCOMMON = _G.LE_ITEM_QUALITY_UNCOMMON
+local UPDATE = _G.TOOLTIP_UPDATE_TIME
 local BANK_CONTAINER = _G.BANK_CONTAINER
 local ITEM_SOULBOUND_S = _G.ITEM_SOULBOUND
 local ITEM_ACCOUNTBOUND_S = _G.ITEM_ACCOUNTBOUND
 local ITEM_BNETACCOUNTBOUND_S = _G.ITEM_BNETACCOUNTBOUND
 
 local BindScanner = CreateFrame('GameTooltip', 'tdBag2BoEScaner', UIParent, 'GameTooltipTemplate')
+local TimeScanner = CreateFrame('GameTooltip', 'tdBag2BoEScanner2', UIParent, 'GameTooltipTemplate')
 
-local function GetBindTimer(bag, slot)
-  BindScanner:SetOwner(UIParent, 'ANCHOR_NONE')
+local function GetBindTimer(item)
+  local bag, slot = item.bag, item.slot
+  TimeScanner:SetOwner(UIParent, 'ANCHOR_NONE')
   if bag == BANK_CONTAINER then
-    BindScanner:SetInventoryItem('player', BankButtonIDToInvSlotID(slot))
+    TimeScanner:SetInventoryItem('player', BankButtonIDToInvSlotID(slot))
   else
-    BindScanner:SetBagItem(bag, slot)
+    TimeScanner:SetBagItem(bag, slot)
   end
 
-  for i = 2, BindScanner:NumLines() do
-    local line = _G['tdBag2BoEScanerTextLeft' .. i]
+  for i = 2, TimeScanner:NumLines() do
+    local line = _G['tdBag2BoEScanner2TextLeft' .. i]
     if not line then break end
     local textLeft = line:GetText()
     if not textLeft then break end
     local timeleft = textLeft:match(BIND_TRADE_TIME_REMAINING_CAPTURE)
 
     if timeleft then
-      return timeleft
+      return timeleft:gsub(' ',''):gsub('(%d+%a)(.*)','%1%+')
     end
   end
 end
 
-local function GetRefundTimer(bag, slot)
-  BindScanner:SetOwner(UIParent, 'ANCHOR_NONE')
+local function GetRefundTimer(item)
+  local bag, slot = item.bag, item.slot
+  TimeScanner:SetOwner(UIParent, 'ANCHOR_NONE')
   if bag == BANK_CONTAINER then
-    BindScanner:SetInventoryItem('player', BankButtonIDToInvSlotID(slot))
+    TimeScanner:SetInventoryItem('player', BankButtonIDToInvSlotID(slot))
   else
-    BindScanner:SetBagItem(bag, slot)
+    TimeScanner:SetBagItem(bag, slot)
   end
 
-  for i = 2, BindScanner:NumLines() do
-    local line = _G['tdBag2BoEScanerTextLeft' .. i]
+  for i = 2, TimeScanner:NumLines() do
+    local line = _G['tdBag2BoEScanner2TextLeft' .. i]
     if not line then break end
     local textLeft = line:GetText()
     if not textLeft then break end
     local timeleft = textLeft:match(REFUND_TIME_REMAINING_CAPTURE)
 
     if timeleft then
-      return timeleft
+      return timeleft:gsub(' ',''):gsub('(%d+%a)(.*)','%1%+')
     end
   end
 end
 
-local function GetBindInfo(bag, slot)
+local function GetBindInfo(item)
+  local bag, slot = item.bag, item.slot
   BindScanner:SetOwner(UIParent, 'ANCHOR_NONE')
   if bag == BANK_CONTAINER then
     BindScanner:SetInventoryItem('player', BankButtonIDToInvSlotID(slot))
@@ -85,7 +90,7 @@ local function GetBindInfo(bag, slot)
       return true
     end
     if textLeft:find(ITEM_SOULBOUND_S) then
-      local timeleft = GetBindTimer(bag, slot)
+      local timeleft = GetBindTimer(item)
       if timeleft then
         return false, timeleft
       else
@@ -96,23 +101,42 @@ local function GetBindInfo(bag, slot)
   return false
 end
 
-local timer
+local timers = {}
+local function BindTicker(item)
+  timers[item] = true
+  if not addon._ticker then
+    addon._ticker = C_Timer.NewTicker(10, function()
+      for item,v in pairs(timers) do
+        local timeleft = GetBindTimer(item)
+        if timeleft then
+          item.Count:SetText(timeleft)
+        else
+          item.Count:SetText('')
+          item.BindInfo:SetText('')
+          timers[item] = nil
+        end
+      end
+    end)
+  end
+end
+
 local function UpdateItem(item)
+  if item.meta:IsCached() then
+    return
+  end
+
   if item.BindInfo then
     item.BindInfo:Hide()
   end
 
-  if item.meta:IsCached() then
-    return
+  if timers[item] then
+    timers[item]=nil
   end
 
   local _, _, _, quality, _, _, itemLink, _, _, itemID = GetContainerItemInfo(item.bag, item.slot)
   if not itemID or quality < UNCOMMON then return end
   local _, _, _, itemEquipLoc, _, _, _ = GetItemInfoInstant(itemID)
   if not itemEquipLoc or itemEquipLoc == "" then return end
-  local isBound, timeleft = GetBindInfo(item.bag, item.slot)
-  if isBound then return end
-
   if not item.BindInfo then
     item.BindInfo = item:CreateFontString()
     item.BindInfo:SetDrawLayer("ARTWORK",1)
@@ -121,18 +145,21 @@ local function UpdateItem(item)
     item.BindInfo:SetShadowOffset(1,-1)
     item.BindInfo:SetShadowColor(0,0,0,.5)
   end
-  item.BindInfo:SetFormattedText('|cffFFFF8F%s|r',L["BoE"])
-  item.BindInfo:Show()
-  if timeleft and item.Count then
-    timeleft=timeleft:gsub(' ',''):gsub('(%d+%a)(.*)','%1%+')
-    item.Count:SetText(timeleft)
-    if not item.Count:IsVisible() then
-      item.Count:Show()
+  C_Timer.After(UPDATE, function()
+    local isBound, timeleft = GetBindInfo(item)
+    if isBound and not timeleft then return end
+
+    item.BindInfo:SetFormattedText('|cffFFFF8F%s|r',(timeleft and L["BoU"] or L["BoE"]))
+    if timeleft and item.Count then
+      item.Count:SetText(timeleft)
+      if not item.Count:IsVisible() then
+        item.Count:Show()
+      end
+      BindTicker(item)
     end
-    C_Timer.After(10, function()
-      item:Update()
-    end)
-  end
+    item.BindInfo:Show()
+  end)
 end
 
 tdBag2:RegisterPlugin({type = 'Item', update = UpdateItem})
+_G[addonName] = addon
