@@ -2,7 +2,7 @@
 ## Title: tdBag2 BoE
 ## Notes: BoE overlay on bag and bank items
 ## Author: Road-block
-## Version: 0.0.3
+## Version: 0.0.4
 ## Dependencies: tdBag2
 ## X-tdBag2-Plugin: BoE
 
