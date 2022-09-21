@@ -47,6 +47,22 @@ local ITEM_BNETACCOUNTBOUND_S = _G.ITEM_BNETACCOUNTBOUND
 local BindScanner = CreateFrame('GameTooltip', 'tdBag2BoEScaner', UIParent, 'GameTooltipTemplate')
 local TimeScanner = CreateFrame('GameTooltip', 'tdBag2BoEScanner2', UIParent, 'GameTooltipTemplate')
 
+local function fmtDuration(s)
+  if not type(s)=="string" and #s > 0 then
+    return
+  end
+  s = s:gsub('%s','')
+  local amount, denomination = s:match('^(%d+)([^%d]*)')
+  if not amount and denomination then return s end
+  local b = strbyte(denomination,1)
+  if b > 0 and b <= 127 then
+    return string.format("%d%s"..L["+"],amount,denomination:sub(1,1))
+  elseif b >= 194 then
+    return string.format("%d%s"..L["+"],amount,denomination)
+  end
+  return s
+end
+
 local function GetBindTimer(item)
   local bag, slot = item.bag, item.slot
   TimeScanner:SetOwner(UIParent, 'ANCHOR_NONE')
@@ -64,7 +80,7 @@ local function GetBindTimer(item)
     local timeleft = textLeft:match(BIND_TRADE_TIME_REMAINING_CAPTURE)
 
     if timeleft then
-      return timeleft:gsub(' ',''):gsub('(%d+%a)(.*)','%1%+')
+      return fmtDuration(timeleft)
     end
   end
 end
@@ -86,7 +102,7 @@ local function GetRefundTimer(item)
     local timeleft = textLeft:match(REFUND_TIME_REMAINING_CAPTURE)
 
     if timeleft then
-      return timeleft:gsub(' ',''):gsub('(%d+%a)(.*)','%1%+')
+      return fmtDuration(timeleft)
     end
   end
 end
