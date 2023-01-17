@@ -12,6 +12,16 @@ end
 local _G = _G
 local UIParent = UIParent
 local BankButtonIDToInvSlotID = BankButtonIDToInvSlotID
+local GetContainerItemInfo = function(bag, slot)
+  if C_Container.GetContainerItemInfo then
+    local info = C_Container.GetContainerItemInfo(bag, slot)
+    if info then
+      return info.iconFileID, info.stackCount, info.isLocked, info.quality, info.isReadable, info.hasLoot, info.hyperlink, info.isFiltered, info.hasNoValue, info.itemID, info.isBound
+    end
+  else
+    return _G.GetContainerItemInfo(bag,slot)
+  end
+end
 local Item = _G.Item
 local armor_tokens = {
   [22349]=true,[22350]=true,[22351]=true,[22352]=true,[22353]=true,[22354]=true,[22355]=true,[22356]=true,[22357]=true,
