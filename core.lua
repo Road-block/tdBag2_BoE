@@ -54,8 +54,10 @@ local ITEM_SOULBOUND_S = _G.ITEM_SOULBOUND
 local ITEM_ACCOUNTBOUND_S = _G.ITEM_ACCOUNTBOUND
 local ITEM_BNETACCOUNTBOUND_S = _G.ITEM_BNETACCOUNTBOUND
 
-local BindScanner = CreateFrame('GameTooltip', 'tdBag2BoEScaner', UIParent, 'GameTooltipTemplate')
-local TimeScanner = CreateFrame('GameTooltip', 'tdBag2BoEScanner2', UIParent, 'GameTooltipTemplate')
+local BindScanner = CreateFrame('GameTooltip', 'tdBag2BoEScaner', nil, 'GameTooltipTemplate')
+BindScanner:SetOwner(WorldFrame, 'ANCHOR_NONE')
+local TimeScanner = CreateFrame('GameTooltip', 'tdBag2BoEScanner2', nil, 'GameTooltipTemplate')
+TimeScanner:SetOwner(WorldFrame, 'ANCHOR_NONE')
 
 local function fmtDuration(s)
   if not type(s)=="string" and #s > 0 then
@@ -75,7 +77,6 @@ end
 
 local function GetBindTimer(item)
   local bag, slot = item.bag, item.slot
-  TimeScanner:SetOwner(UIParent, 'ANCHOR_NONE')
   if bag == BANK_CONTAINER then
     TimeScanner:SetInventoryItem('player', BankButtonIDToInvSlotID(slot))
   else
@@ -97,7 +98,6 @@ end
 
 local function GetRefundTimer(item)
   local bag, slot = item.bag, item.slot
-  TimeScanner:SetOwner(UIParent, 'ANCHOR_NONE')
   if bag == BANK_CONTAINER then
     TimeScanner:SetInventoryItem('player', BankButtonIDToInvSlotID(slot))
   else
@@ -119,7 +119,6 @@ end
 
 local function GetBindInfo(item)
   local bag, slot = item.bag, item.slot
-  BindScanner:SetOwner(UIParent, 'ANCHOR_NONE')
   if bag == BANK_CONTAINER then
     BindScanner:SetInventoryItem('player', BankButtonIDToInvSlotID(slot))
   else
@@ -179,7 +178,8 @@ local function UpdateItem(item)
   end
 
   local _, _, _, quality, _, _, itemLink, _, _, itemID = GetContainerItemInfo(item.bag, item.slot)
-  if not itemID or quality < UNCOMMON then return end
+  if not itemID then return end
+  if not quality or (quality < UNCOMMON) then return end
   local _, _, _, itemEquipLoc, _, _, _ = GetItemInfoInstant(itemID)
   if (itemEquipLoc == nil) or (itemEquipLoc == "") and not armor_tokens[itemID] then return end
   if not item.BindInfo then
